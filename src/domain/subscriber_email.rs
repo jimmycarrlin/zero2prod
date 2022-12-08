@@ -1,4 +1,3 @@
-use unicode_segmentation::UnicodeSegmentation;
 use validator::validate_email;
 
 

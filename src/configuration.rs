@@ -1,7 +1,6 @@
 use config::Config;
 use secrecy::Secret;
 use secrecy::ExposeSecret;
-use crate::email_client::EmailClient;
 use crate::domain::SubscriberEmail;
 
 
