@@ -1,6 +1,8 @@
 use config::Config;
 use secrecy::Secret;
 use secrecy::ExposeSecret;
+use crate::email_client::EmailClient;
+use crate::domain::SubscriberEmail;
 
 
 pub enum Environment {
@@ -12,6 +14,7 @@ pub enum Environment {
 pub struct Settings {
 	pub database: DatabaseSettings,
     pub application: ApplicationSettings,
+	pub email_client: EmailClientSettings,
 }
 
 #[derive(serde::Deserialize)]
@@ -27,6 +30,14 @@ pub struct DatabaseSettings {
 pub struct ApplicationSettings {
 	pub port: u16,
 	pub host: String,
+}
+
+#[derive(serde::Deserialize)]
+pub struct EmailClientSettings {
+	pub base_url: String,
+	pub sender_email: String,
+	pub authorization_token: Secret<String>,
+	pub timeout_milliseconds: u64,
 }
 
 pub fn get_configuration() -> Result<Settings, config::ConfigError> {
@@ -80,4 +91,14 @@ impl DatabaseSettings {
             self.username, self.password.expose_secret(), self.host, self.port
         ))
     }
+}
+
+impl EmailClientSettings {
+	pub fn sender(&self) -> Result<SubscriberEmail, String> {
+		SubscriberEmail::parse(self.sender_email.clone())
+	}
+
+	pub fn timeout(&self) -> std::time::Duration {
+		std::time::Duration::from_millis(self.timeout_milliseconds)
+	}
 }
