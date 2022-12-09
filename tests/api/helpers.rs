@@ -7,6 +7,7 @@ use uuid::Uuid;
 use once_cell::sync::Lazy;
 use secrecy::ExposeSecret;
 use zero2prod::email_client::EmailClient;
+use zero2prod::startup::Application;
 
 
 static TRACING: Lazy<()> = Lazy::new(|| {
@@ -50,28 +51,17 @@ async fn configure_database(config: &DatabaseSettings) -> PgPool {
 pub async fn spawn_app() -> TestApp {
     Lazy::force(&TRACING);
 
-    let listener = TcpListener::bind("127.0.0.1:0").expect("failed to bind random port");
-    let port = listener.local_addr().unwrap().port();
-    let address = format!("http://127.0.0.1:{}", port);
+    let config = {
+        let mut config = get_configuration().expect("failed to read configuration");
+        config.database.database_name = Uuid::new_v4().to_string(); // different db for each test
+        config.application.port = 0; // random OS port
+        config
+    };
+    let db_pool = configure_database(&config.database).await; // for test purposes
+    let application = Application::build(config).expect("failed to build application");
+    let address = format!("http://127.0.0.1:{}", application.port()); // actually assigned port
 
-    let mut configuration = get_configuration().expect("failed to read configuration");
-    configuration.database.database_name = Uuid::new_v4().to_string();
-    let connection_pool = configure_database(&configuration.database).await;
+    let _ = tokio::spawn(application.run_until_stopped());
 
-    let sender_email = configuration.email_client
-        .sender()
-        .expect("invalid sender email address");
-    let timeout = configuration.email_client.timeout();
-    let base_url = configuration.email_client.base_url;
-    let authorization_token = configuration.email_client.authorization_token;
-    let email_client = EmailClient::new(base_url, sender_email, authorization_token, timeout);
-
-    let server = run(listener, connection_pool.clone(), email_client)
-        .expect("failed to bind address");
-    let _ = tokio::spawn(server);
-
-    TestApp {
-        address,
-        db_pool: connection_pool
-    }
+    TestApp { address, db_pool }
 }
