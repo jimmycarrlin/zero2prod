@@ -1,5 +1,5 @@
 use std::fmt::{Debug, Display, Formatter};
-use actix_web::{web, HttpResponse};
+use actix_web::{web, HttpResponse, http::StatusCode};
 use sqlx::PgPool;
 use uuid::Uuid;
 use anyhow::Context;
@@ -22,6 +22,15 @@ pub enum ConfirmError {
 impl Debug for ConfirmError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         error_chain_fmt(f, self)
+    }
+}
+
+impl actix_web::ResponseError for ConfirmError {
+    fn status_code(&self) -> StatusCode {
+        match self {
+            ConfirmError::UnknownToken => StatusCode::UNAUTHORIZED,
+            ConfirmError::UnexpectedError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
     }
 }
 
