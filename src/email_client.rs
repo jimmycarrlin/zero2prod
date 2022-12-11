@@ -132,8 +132,8 @@ mod tests {
             .await;
 
         let subscriber_email = email();
-        let subject: String = subject();
-        let content: String = content();
+        let subject = subject();
+        let content = content();
 
         let _ = email_client
             .send_email(subscriber_email, &subject, &content, &content)

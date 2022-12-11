@@ -8,7 +8,7 @@ use secrecy::ExposeSecret;
 use crate::email_client::EmailClient;
 use crate::configuration::Settings;
 
-use crate::routes::{health_check, subscribe};
+use crate::routes::{confirm, health_check, subscribe};
 
 
 pub struct Application {
@@ -16,18 +16,28 @@ pub struct Application {
 	server: Server,
 }
 
+pub struct ApplicationBaseUrl(pub String);
 
-pub fn run(listener: TcpListener, db_pool: PgPool, email_client: EmailClient) -> io::Result<Server> {
+
+pub fn run(
+	listener: TcpListener,
+	db_pool: PgPool,
+	email_client: EmailClient,
+	base_url: String
+) -> io::Result<Server> {
 	let db_pool = web::Data::new(db_pool);
 	let email_client = web::Data::new(email_client);
+	let base_url = web::Data::new(ApplicationBaseUrl(base_url));
 
     let server = HttpServer::new(move || {
         App::new()
 			.wrap(TracingLogger::default())
             .route("/health_check", web::get().to(health_check))
 			.route("/subscriptions", web::post().to(subscribe))
+			.route("/subscriptions/confirm", web::get().to(confirm))
 			.app_data(db_pool.clone())
 			.app_data(email_client.clone())
+			.app_data(base_url.clone())
     })
     .listen(listener)?
     .run();
@@ -60,7 +70,7 @@ impl Application {
 		};
 
 		let port = listener.local_addr().unwrap().port(); // actually assigned port
-		let server = run(listener, connection_pool, email_client)?;
+		let server = run(listener, connection_pool, email_client, configuration.application.base_url)?;
 
 		Ok(Self { port, server })
 	}
