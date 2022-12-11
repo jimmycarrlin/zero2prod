@@ -29,7 +29,7 @@ impl TryFrom<FormData> for NewSubscriber {
 }
 
 
-fn error_chain_fmt(
+pub fn error_chain_fmt(
 	f: &mut Formatter<'_>,
 	e: &impl std::error::Error,
 ) -> std::fmt::Result {
