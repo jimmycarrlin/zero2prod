@@ -47,6 +47,15 @@ impl TestApp {
             .expect("failed to execute request")
     }
 
+    pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
+        reqwest::Client::new()
+            .post(&format!("{}/newsletters", &app.address))
+            .json(&body)
+            .send()
+            .await
+            .expect("Failed to execute request")
+    }
+
     pub fn get_confirmation_links(&self, email_request: &wiremock::Request) -> ConfirmationLinks {
         let body: serde_json::Value = serde_json::from_slice(&email_request.body).unwrap();
 
