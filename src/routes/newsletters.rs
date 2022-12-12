@@ -83,8 +83,7 @@ async fn get_confirmed_subscribers(
 ) -> Result<Vec<Result<ConfirmedSubscriber, anyhow::Error>>, anyhow::Error> {
     struct Row { email: String }
 
-    let rows = sqlx::query_as!(
-        Row,
+    let rows = sqlx::query!(
         r#"
         SELECT email
         FROM subscriptions
@@ -96,7 +95,7 @@ async fn get_confirmed_subscribers(
 
     let confirmed_subscribers = rows
         .into_iter()
-        .map(|s| match SubscriberEmail::parse(s.email) {
+        .map(|r| match SubscriberEmail::parse(r.email) {
             Ok(email) => Ok(ConfirmedSubscriber { email }),
             Err(e) => Err(anyhow::anyhow!(e)),
         })
