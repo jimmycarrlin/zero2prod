@@ -1,7 +1,10 @@
 use std::fmt::Debug;
 use actix_web::{web, HttpResponse, ResponseError, http::StatusCode};
 use sqlx::PgPool;
+use anyhow::Context;
+use crate::email_client::EmailClient;
 use crate::routes::error_chain_fmt;
+use crate::domain::SubscriberEmail;
 
 
 #[derive(serde::Deserialize)]
@@ -17,7 +20,7 @@ pub struct Content {
 }
 
 struct ConfirmedSubscriber {
-    email: String,
+    email: SubscriberEmail,
 }
 
 #[derive(thiserror::Error)]
@@ -42,10 +45,32 @@ impl ResponseError for PublishError {
 
 
 pub async fn publish_newsletter(
-    _body: web::Json::<BodyData>,
-    pool: web::Data<PgPool>
+    body: web::Json::<BodyData>,
+    pool: web::Data<PgPool>,
+    email_client: web::Data<EmailClient>,
 ) -> Result<HttpResponse, PublishError> {
-    let _recipients = get_confirmed_subscribers(&pool).await?;
+    let subscribers = get_confirmed_subscribers(&pool).await?;
+    for subscriber in subscribers {
+        match subscriber {
+            Ok(subscriber) => {
+                email_client
+                    .send_email(
+                        &subscriber.email,
+                        &body.title,
+                        &body.content.html,
+                        &body.content.text,
+                    )
+                    .await
+                    .with_context(|| format!("Failed to send newsletter issue to {}", subscriber.email))?;
+            },
+            Err(err) => {
+                tracing::warn!(
+                    err.cause_chain = ?err,
+                    "Skipping a confirmed subscriber. Their stored contact details are invalid",
+                )
+            },
+        }
+    }
     Ok(HttpResponse::Ok().finish())
 }
 
@@ -55,9 +80,11 @@ pub async fn publish_newsletter(
 )]
 async fn get_confirmed_subscribers(
     pool: &PgPool,
-) -> Result<Vec<ConfirmedSubscriber>, anyhow::Error> {
+) -> Result<Vec<Result<ConfirmedSubscriber, anyhow::Error>>, anyhow::Error> {
+    struct Row { email: String }
+
     let rows = sqlx::query_as!(
-        ConfirmedSubscriber,
+        Row,
         r#"
         SELECT email
         FROM subscriptions
@@ -67,5 +94,13 @@ async fn get_confirmed_subscribers(
     .fetch_all(pool)
     .await?;
 
-    Ok(rows)
+    let confirmed_subscribers = rows
+        .into_iter()
+        .map(|s| match SubscriberEmail::parse(s.email) {
+            Ok(email) => Ok(ConfirmedSubscriber { email }),
+            Err(e) => Err(anyhow::anyhow!(e)),
+        })
+        .collect();
+
+    Ok(confirmed_subscribers)
 }

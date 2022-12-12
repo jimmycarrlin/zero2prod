@@ -158,7 +158,7 @@ pub async fn send_confirmation_email(
 	let subject = "Welcome!";
 
 	email_client.send_email(
-		new_subscriber.email,
+		&new_subscriber.email,
 		subject,
 		&html_body,
 		&plain_body

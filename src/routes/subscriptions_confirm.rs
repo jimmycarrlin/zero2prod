@@ -64,7 +64,7 @@ pub async fn get_subscriber_id_from_token(
     subscription_token: &str,
     pool: &PgPool
 ) -> Result<Option<Uuid>, sqlx::Error> {
-    let entry = sqlx::query!(
+    let row = sqlx::query!(
         r#"
         SELECT subscriber_id FROM subscription_tokens
             WHERE subscription_token = $1
@@ -74,7 +74,7 @@ pub async fn get_subscriber_id_from_token(
     .fetch_optional(pool)
     .await?;
 
-    Ok(entry.map(|e| e.subscriber_id))
+    Ok(row.map(|r| r.subscriber_id))
 }
 
 #[tracing::instrument(
