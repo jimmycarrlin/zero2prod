@@ -8,12 +8,12 @@ impl SubscriberName {
     pub fn parse(s: String) -> Result<Self, String> {
         let forbidden_characters = ['/', '(', ')', '"', '<', '>', '\\', '{', '}'];
 
-        let is_empty_or_whitespace = s.trim().is_empty();
-        let is_too_long = s.graphemes(true).count() > 256;
-        let contains_forbidden_characters = s.contains(&forbidden_characters);
-
-        if is_empty_or_whitespace || is_too_long || contains_forbidden_characters {
-            Err(format!("{} is not a valid subscriber name", s))
+        if s.trim().is_empty() {
+            Err(format!("{} is empty or whitespace", s))
+        } else if s.graphemes(true).count() > 256 {
+            Err(format!("{} is longer than 256 characters", s))
+        } else if s.contains(&forbidden_characters) {
+            Err(format!("{} contains forbidden characters: {:?}", s, forbidden_characters))
         } else {
             Ok(Self(s))
         }
