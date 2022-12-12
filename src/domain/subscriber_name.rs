@@ -9,11 +9,11 @@ impl SubscriberName {
         let forbidden_characters = ['/', '(', ')', '"', '<', '>', '\\', '{', '}'];
 
         if s.trim().is_empty() {
-            Err(format!("{} is empty or whitespace", s))
+            Err(format!("`{}` is empty or whitespace", s))
         } else if s.graphemes(true).count() > 256 {
-            Err(format!("{} is longer than 256 characters", s))
+            Err(format!("`{}` is longer than 256 characters", s))
         } else if s.contains(&forbidden_characters) {
-            Err(format!("{} contains forbidden characters: {:?}", s, forbidden_characters))
+            Err(format!("`{}` contains forbidden characters: {:?}", s, forbidden_characters))
         } else {
             Ok(Self(s))
         }
