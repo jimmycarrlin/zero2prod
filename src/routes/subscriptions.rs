@@ -189,8 +189,9 @@ pub async fn store_token(
         subscription_token,
         subscriber_id
     )
-		.execute(transaction)
-		.await?;
+	.execute(transaction)
+	.await?;
+
 	Ok(())
 }
 		

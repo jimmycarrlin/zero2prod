@@ -22,7 +22,7 @@ async fn newsletters_are_not_delivered_to_unconfirmed_subscribers() {
              "html": "<p>Newsletter body as HTML</p>",
          }
     });
-    let response = post_newsletters(&newsletter_request_body)
+    let response = post_newsletters(&newsletter_request_body).await;
 
     assert_eq!(response.status().as_u16(), 200);
 }
@@ -45,7 +45,7 @@ async fn newsletters_are_delivered_to_confirmed_subscribers() {
              "html": "<p>Newsletter body as HTML</p>",
          }
     });
-    let response = post_newsletters(&newsletter_request_body);
+    let response = post_newsletters(&newsletter_request_body).await;
 
     assert_eq!(response.status().as_u16(), 200);
 }
@@ -70,7 +70,7 @@ async fn newsletters_returns_400_for_invalid_data() {
     ];
 
     for (invalid_body, error_message) in test_cases {
-        let response = post_newsletters(&invalid_body);
+        let response = post_newsletters(&invalid_body).await;
 
         assert_eq!(
             400,
