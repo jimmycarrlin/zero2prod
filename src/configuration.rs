@@ -2,6 +2,7 @@ use config::Config;
 use secrecy::Secret;
 use secrecy::ExposeSecret;
 use crate::domain::SubscriberEmail;
+use crate::startup::HmacSecret;
 
 
 pub enum Environment {
@@ -30,6 +31,7 @@ pub struct ApplicationSettings {
 	pub port: u16,
 	pub host: String,
 	pub base_url: String,
+	pub hmac_secret: HmacSecret,
 }
 
 #[derive(Clone, serde::Deserialize)]

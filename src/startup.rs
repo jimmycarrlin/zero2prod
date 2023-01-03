@@ -4,11 +4,11 @@ use std::io;
 use std::net::TcpListener;
 use tracing_actix_web::TracingLogger;
 use sqlx::postgres::PgPoolOptions;
-use secrecy::ExposeSecret;
+use secrecy::{Secret, ExposeSecret};
 use crate::email_client::EmailClient;
 use crate::configuration::Settings;
 
-use crate::routes::{confirm, health_check, publish_newsletter, subscribe};
+use crate::routes::{home, confirm, health_check, publish_newsletter, subscribe, login_form, login};
 
 
 pub struct Application {
@@ -18,27 +18,36 @@ pub struct Application {
 
 pub struct ApplicationBaseUrl(pub String);
 
+#[derive(Clone, serde::Deserialize)]
+pub struct HmacSecret(pub Secret<String>);
+
 
 pub fn run(
 	listener: TcpListener,
 	db_pool: PgPool,
 	email_client: EmailClient,
-	base_url: String
+	base_url: String,
+	hmac_secret: HmacSecret,
 ) -> io::Result<Server> {
 	let db_pool = web::Data::new(db_pool);
 	let email_client = web::Data::new(email_client);
 	let base_url = web::Data::new(ApplicationBaseUrl(base_url));
+	let hmac_secret = web::Data::new(hmac_secret);
 
     let server = HttpServer::new(move || {
         App::new()
 			.wrap(TracingLogger::default())
+			.route("/", web::get().to(home))
             .route("/health_check", web::get().to(health_check))
 			.route("/subscriptions", web::post().to(subscribe))
 			.route("/subscriptions/confirm", web::get().to(confirm))
 			.route("/newsletters", web::post().to(publish_newsletter))
+			.route("/login", web::get().to(login_form))
+			.route("/login", web::post().to(login))
 			.app_data(db_pool.clone())
 			.app_data(email_client.clone())
 			.app_data(base_url.clone())
+			.app_data(hmac_secret.clone())
     })
     .listen(listener)?
     .run();
@@ -71,7 +80,13 @@ impl Application {
 		};
 
 		let port = listener.local_addr().unwrap().port(); // actually assigned port
-		let server = run(listener, connection_pool, email_client, configuration.application.base_url)?;
+		let server = run(
+			listener,
+			connection_pool,
+			email_client,
+			configuration.application.base_url,
+			configuration.application.hmac_secret,
+		)?;
 
 		Ok(Self { port, server })
 	}
